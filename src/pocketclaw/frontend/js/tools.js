@@ -1,5 +1,5 @@
 /**
- * PocketClaw Tools Module
+ * PocketPaw Tools Module
  * Handles tool-specific UI interactions and formatting
  */
 

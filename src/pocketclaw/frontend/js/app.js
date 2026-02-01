@@ -1,5 +1,5 @@
 /**
- * PocketClaw Main Application
+ * PocketPaw Main Application
  * Alpine.js component for the dashboard
  */
 
@@ -9,7 +9,14 @@ function app() {
         view: 'chat',
         showSettings: false,
         showScreenshot: false,
+        showFileBrowser: false,
         screenshotSrc: '',
+
+        // File browser state
+        filePath: '~',
+        files: [],
+        fileLoading: false,
+        fileError: null,
         
         // Agent state
         agentActive: false,
@@ -47,16 +54,21 @@ function app() {
          * Initialize the app
          */
         init() {
-            this.log('PocketClaw Dashboard initialized', 'info');
-            
+            this.log('PocketPaw Dashboard initialized', 'info');
+
             // Register event handlers first
             this.setupSocketHandlers();
-            
+
             // Connect WebSocket (singleton - will only connect once)
             socket.connect();
-            
+
             // Start status polling (low frequency)
             this.startStatusPolling();
+
+            // Refresh Lucide icons after initial render
+            this.$nextTick(() => {
+                if (window.refreshIcons) window.refreshIcons();
+            });
         },
 
         /**
@@ -67,7 +79,7 @@ function app() {
             socket.clearHandlers();
             
             const onConnected = () => {
-                this.log('Connected to PocketClaw Engine', 'success');
+                this.log('Connected to PocketPaw Engine', 'success');
                 // Fetch initial status
                 socket.runTool('status');
             };
@@ -91,6 +103,7 @@ function app() {
             socket.on('error', (data) => this.handleError(data));
             socket.on('stream_start', () => this.startStreaming());
             socket.on('stream_end', () => this.endStreaming());
+            socket.on('files', (data) => this.handleFiles(data));
         },
 
         /**
@@ -100,10 +113,10 @@ function app() {
             const content = data.content || '';
             
             // Skip duplicate connection messages
-            if (content.includes('Connected to PocketClaw') && this.hasShownWelcome) {
+            if (content.includes('Connected to PocketPaw') && this.hasShownWelcome) {
                 return;
             }
-            if (content.includes('Connected to PocketClaw')) {
+            if (content.includes('Connected to PocketPaw')) {
                 this.hasShownWelcome = true;
             }
             
@@ -173,6 +186,33 @@ function app() {
             this.log(content, 'error');
             this.showToast(content, 'error');
             this.endStreaming();
+
+            // If file browser is open, show error there
+            if (this.showFileBrowser) {
+                this.fileLoading = false;
+                this.fileError = content;
+            }
+        },
+
+        /**
+         * Handle file browser data
+         */
+        handleFiles(data) {
+            this.fileLoading = false;
+            this.fileError = null;
+
+            if (data.error) {
+                this.fileError = data.error;
+                return;
+            }
+
+            this.filePath = data.path || '~';
+            this.files = data.files || [];
+
+            // Refresh Lucide icons after Alpine renders
+            this.$nextTick(() => {
+                if (window.refreshIcons) window.refreshIcons();
+            });
         },
 
         /**
@@ -237,7 +277,78 @@ function app() {
          */
         runTool(tool) {
             this.log(`Running tool: ${tool}`, 'info');
+
+            // Special handling for file browser
+            if (tool === 'fetch') {
+                this.openFileBrowser();
+                return;
+            }
+
             socket.runTool(tool);
+        },
+
+        /**
+         * Open file browser modal
+         */
+        openFileBrowser() {
+            this.showFileBrowser = true;
+            this.fileLoading = true;
+            this.fileError = null;
+            this.files = [];
+            this.filePath = '~';
+
+            // Refresh icons after modal renders
+            this.$nextTick(() => {
+                if (window.refreshIcons) window.refreshIcons();
+            });
+
+            socket.send('browse', { path: '~' });
+        },
+
+        /**
+         * Navigate to a directory
+         */
+        navigateTo(path) {
+            this.fileLoading = true;
+            this.fileError = null;
+            socket.send('browse', { path });
+        },
+
+        /**
+         * Navigate up one directory
+         */
+        navigateUp() {
+            const parts = this.filePath.split('/').filter(s => s);
+            parts.pop();
+            const newPath = parts.length > 0 ? parts.join('/') : '~';
+            this.navigateTo(newPath);
+        },
+
+        /**
+         * Navigate to a path segment (breadcrumb click)
+         */
+        navigateToSegment(index) {
+            const parts = this.filePath.split('/').filter(s => s);
+            const newPath = parts.slice(0, index + 1).join('/');
+            this.navigateTo(newPath || '~');
+        },
+
+        /**
+         * Select a file or folder
+         */
+        selectFile(item) {
+            if (item.isDir) {
+                // Navigate into directory
+                const newPath = this.filePath === '~'
+                    ? item.name
+                    : `${this.filePath}/${item.name}`;
+                this.navigateTo(newPath);
+            } else {
+                // File selected - could download or preview
+                this.log(`Selected file: ${item.name}`, 'info');
+                this.showToast(`Selected: ${item.name}`, 'info');
+                // TODO: Add file download/preview functionality
+            }
         },
 
         /**

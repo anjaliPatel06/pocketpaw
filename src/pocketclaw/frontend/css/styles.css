@@ -1,5 +1,5 @@
 /* =====================================================
-   PocketClaw Dashboard - Modern Apple Design
+   PocketPaw Dashboard - Modern Apple Design
    Glassmorphism. SF Pro. Refined.
    ===================================================== */
 
@@ -113,34 +113,9 @@ body {
 .nav-item:hover { background: rgba(255, 255, 255, 0.08); }
 .nav-item:active { transform: scale(0.98); background: rgba(255, 255, 255, 0.12); }
 .nav-item.danger { color: var(--danger-color); }
-.nav-item span { font-size: 18px; width: 20px; text-align: center; }
 
-/* Status Widget */
-.status-widget {
-  margin-top: auto;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: var(--radius-lg);
-  padding: 18px;
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(10px);
-}
-
-.status-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-top: 4px;
-}
-
-.status-item { display: flex; flex-direction: column; gap: 4px; }
-.status-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
-.status-title { display: none; } /* Cleaner look */
-.status-value {
-  font-size: 15px;
-  font-weight: 500;
-  font-family: var(--font-mono);
-  letter-spacing: -0.02em;
-}
+/* Status Widget - now using UnoCSS glass-dark shortcut + utilities */
+/* Keeping only the custom backdrop-filter since UnoCSS runtime doesn't include it by default */
 
 /* =====================================================
    Main Content
@@ -370,16 +345,33 @@ input:checked + .slider:before { transform: translateX(20px); }
    Modals
    ===================================================== */
 .modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
 }
 
 .modal {
+  position: relative;
+  width: 500px;
+  max-width: 90vw;
   background: rgba(30, 30, 32, 0.85);
   border: 1px solid var(--glass-border);
   border-radius: 20px;
   box-shadow: var(--shadow-lg);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: modalPop 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@keyframes modalPop {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--glass-border); }
@@ -387,23 +379,201 @@ input:checked + .slider:before { transform: translateX(20px); }
 .close-btn { font-size: 28px; color: var(--text-secondary); transition: color 0.2s; }
 .close-btn:hover { color: white; }
 
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.close-btn:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* Lucide icons base styling */
+[data-lucide] {
+  stroke-width: 2;
+}
+
 .modal-body { padding: 24px; }
-.form-group label { margin-bottom: 8px; font-weight: 500; font-size: 13px; color: var(--text-secondary); }
-.form-group select, 
+
+.modal-body hr {
+  border: none;
+  border-top: 1px solid var(--glass-border);
+  margin: 20px 0;
+}
+
+.modal-body h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.form-group select,
 .form-group input {
-  background: rgba(0,0,0,0.2);
+  background: rgba(0,0,0,0.3);
   border: 1px solid var(--glass-border);
   border-radius: 10px;
-  padding: 12px;
+  padding: 12px 14px;
   color: white;
   font-size: 14px;
+  width: 100%;
+  transition: all 0.2s;
 }
-.btn-sm { border-radius: 8px; font-weight: 600; }
+
+.form-group select:focus,
+.form-group input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  background: rgba(0,0,0,0.4);
+}
+
+.form-group select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.input-group input {
+  flex: 1;
+}
+
+.btn-sm {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-sm:hover {
+  background: var(--accent-hover);
+}
+
+.btn-sm:active {
+  transform: scale(0.97);
+}
+
+/* File Browser Modal */
+.modal-lg {
+  width: 600px;
+  max-height: 80vh;
+}
+
+/* Hybrid: Keep component-specific styles, layout via UnoCSS */
+.file-path {
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow-x: auto;
+}
+
+.file-path-home {
+  color: var(--accent-color);
+  cursor: pointer;
+}
+
+.file-path-home:hover {
+  text-decoration: underline;
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: rgba(0,0,0,0.2);
+}
+
+/* file-item: structure via UnoCSS (flex items-center gap-3), skin here */
+.file-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.file-item:last-child {
+  border-bottom: none;
+}
+
+.file-item:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.file-item:active {
+  background: rgba(255,255,255,0.08);
+}
+
+/* Screenshot Preview */
+.screenshot-preview {
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
 
 /* =====================================================
    Toast Notifications
    ===================================================== */
-.toast-container { top: 32px; right: 32px; gap: 16px; }
+.toast-container {
+  position: fixed;
+  top: 32px;
+  right: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+}
 
 .toast {
   background: rgba(35, 35, 35, 0.85);

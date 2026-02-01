@@ -1,4 +1,4 @@
-"""Agents package for PocketClaw."""
+"""Agents package for PocketPaw."""
 
 from pocketclaw.agents.router import AgentRouter
 

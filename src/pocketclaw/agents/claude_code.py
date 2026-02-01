@@ -80,7 +80,7 @@ class ClaudeCodeAgent:
             response = await self._client.messages.create(
                 model=self.settings.anthropic_model,
                 max_tokens=4096,
-                system="""You are PocketClaw, an AI agent running on the user's local machine.
+                system="""You are PocketPaw, an AI agent running on the user's local machine.
 You can help the user with tasks by analyzing their screen and providing guidance.
 When you need to execute commands, provide them as bash code blocks.
 Be concise and helpful.""",

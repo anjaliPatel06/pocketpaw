@@ -1,4 +1,4 @@
-"""PocketClaw entry point."""
+"""PocketPaw entry point."""
 
 import argparse
 import asyncio
@@ -41,7 +41,7 @@ async def run_telegram_mode(settings: Settings) -> None:
         settings = get_settings(force_reload=True)
     
     # Start the bot
-    logger.info("🚀 Starting PocketClaw bot...")
+    logger.info("🚀 Starting PocketPaw bot...")
     await run_bot(settings)
 
 
@@ -61,7 +61,7 @@ def run_dashboard_mode(settings: Settings, port: int) -> None:
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="🦀 PocketClaw - The AI agent that runs on your laptop",
+        description="🐾 PocketPaw - The AI agent that runs on your laptop",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -97,7 +97,7 @@ Examples:
         else:
             asyncio.run(run_telegram_mode(settings))
     except KeyboardInterrupt:
-        logger.info("👋 PocketClaw stopped.")
+        logger.info("👋 PocketPaw stopped.")
 
 
 if __name__ == "__main__":

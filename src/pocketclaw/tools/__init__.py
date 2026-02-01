@@ -1,4 +1,4 @@
-"""Tools package for PocketClaw."""
+"""Tools package for PocketPaw."""
 
 from pocketclaw.tools import status, fetch, screenshot
 

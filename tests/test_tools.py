@@ -1,4 +1,4 @@
-"""Unit tests for PocketClaw tools."""
+"""Unit tests for PocketPaw tools."""
 
 import pytest
 from pathlib import Path

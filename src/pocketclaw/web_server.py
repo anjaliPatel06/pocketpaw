@@ -41,7 +41,7 @@ def create_app(settings: Settings) -> FastAPI:
     _settings = settings
     _session_secret = secrets.token_urlsafe(32)
     
-    app = FastAPI(title="PocketClaw Setup")
+    app = FastAPI(title="PocketPaw Setup")
     
     @app.get("/", response_class=HTMLResponse)
     async def setup_page():
@@ -52,7 +52,7 @@ def create_app(settings: Settings) -> FastAPI:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PocketClaw Setup</title>
+    <title>PocketPaw Setup</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
@@ -153,7 +153,7 @@ def create_app(settings: Settings) -> FastAPI:
 <body>
     <div class="container">
         <div class="logo">🦀</div>
-        <h1>PocketClaw Setup</h1>
+        <h1>PocketPaw Setup</h1>
         <p class="tagline">Your AI agent, on your machine</p>
         
         <form id="setup-form" method="POST" action="/setup">
@@ -197,7 +197,7 @@ def create_app(settings: Settings) -> FastAPI:
         </div>
         
         <div id="success-section" class="success" style="display: none;">
-            ✅ <strong>Connected!</strong> PocketClaw is now running.
+            ✅ <strong>Connected!</strong> PocketPaw is now running.
         </div>
     </div>
     

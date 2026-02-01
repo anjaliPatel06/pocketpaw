@@ -1,5 +1,5 @@
 [project]
-name = "pocketclaw"
+name = "pocketpaw"
 version = "0.1.0"
 description = "The AI agent that runs on your laptop, not a datacenter"
 readme = "README.md"
@@ -7,7 +7,7 @@ license = "MIT"
 requires-python = ">=3.11"
 keywords = ["ai", "agent", "telegram", "assistant", "automation"]
 authors = [
-    { name = "PocketClaw Team" }
+    { name = "PocketPaw Team" }
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -53,7 +53,7 @@ dev = [
 ]
 
 [project.scripts]
-pocketclaw = "pocketclaw.__main__:main"
+pocketpaw = "pocketclaw.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/pocketclaw/pocketclaw"

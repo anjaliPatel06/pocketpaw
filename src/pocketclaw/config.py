@@ -1,4 +1,4 @@
-"""Configuration management for PocketClaw."""
+"""Configuration management for PocketPaw."""
 
 import json
 from pathlib import Path
@@ -22,7 +22,7 @@ def get_config_path() -> Path:
 
 
 class Settings(BaseSettings):
-    """PocketClaw settings with env and file support."""
+    """PocketPaw settings with env and file support."""
     
     model_config = SettingsConfigDict(
         env_prefix="POCKETCLAW_",

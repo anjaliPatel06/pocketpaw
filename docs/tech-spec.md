@@ -1,17 +1,17 @@
-Technical Design Document: PocketClaw
+Technical Design Document: PocketPaw
 
 Component: Desktop Agent / Mobile Interface
 Version: 1.1 (Web Pairing Added)
 
 1. System Architecture
 
-PocketClaw operates as a single-binary daemon running on the host machine (User's Laptop/Server). It acts as a bridge between the Telegram Bot API and the local operating system shell.
+PocketPaw operates as a single-binary daemon running on the host machine (User's Laptop/Server). It acts as a bridge between the Telegram Bot API and the local operating system shell.
 
 High-Level Data Flow
 
 Input: User sends message via Telegram App OR interacts via Local Web Dashboard.
 
-Transport: Telegram Cloud -> PocketClaw Daemon (via HTTPS Long-Polling).
+Transport: Telegram Cloud -> PocketPaw Daemon (via HTTPS Long-Polling).
 
 Routing:
 
@@ -127,13 +127,13 @@ Uses ffmpeg-python (or moviepy) to merge the screen recording with the voiceover
 
 This flow ensures "Normies" never touch a config file.
 
-Install: User runs PocketClaw.exe.
+Install: User runs PocketPaw.exe.
 
 Auto-Launch: The app opens the default browser to http://localhost:8888.
 
 Display: A clean web page shows:
 
-"PocketClaw is Ready."
+"PocketPaw is Ready."
 
 A large QR Code.
 
@@ -219,4 +219,4 @@ Hidden Imports: pydantic, tiktoken, moviepy.audio.fx.all, uvicorn, fastapi.
 
 Data Files: Include ffmpeg binary if not assuming system install.
 
-Command: pyinstaller --onefile --noconsole --name PocketClaw main.py
+Command: pyinstaller --onefile --noconsole --name PocketPaw main.py

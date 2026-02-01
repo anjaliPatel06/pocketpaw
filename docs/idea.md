@@ -1,13 +1,13 @@
-Product Name: PocketClaw
+Product Name: PocketPaw
 
 Tagline: The Sovereign Interface for your "Dusty Laptop."
 Version: 1.0 (The "Strike" Edition)
 
 1. Executive Summary
 
-PocketClaw is the mobile command center for the "Sovereign AI" revolution. It turns any idle computer (Mac Mini, old Lenovo, dusty laptop) into a powerful, autonomous employee that you control via Telegram.
+PocketPaw is the mobile command center for the "Sovereign AI" revolution. It turns any idle computer (Mac Mini, old Lenovo, dusty laptop) into a powerful, autonomous employee that you control via Telegram.
 
-While others are "sitting on the sidelines," PocketClaw users are deploying agents that work, code, and market themselves while their owners sleep. It is zero-config, runs on local hardware, and includes a "Hype Engine" that autonomously generates viral content to spread the movement.
+While others are "sitting on the sidelines," PocketPaw users are deploying agents that work, code, and market themselves while their owners sleep. It is zero-config, runs on local hardware, and includes a "Hype Engine" that autonomously generates viral content to spread the movement.
 
 2. User Stories (The "Hype" Cycle)
 
@@ -17,11 +17,11 @@ The "Underground Builder"
 
 The "Viral Launcher" (New)
 
-"I just automated my entire data entry job. I want PocketClaw to screen-record itself doing the work, add a cool AI voiceover saying 'While you work 9-5, I work 24/7', and save it as a TikTok-ready video so I can flex on X (Twitter)."
+"I just automated my entire data entry job. I want PocketPaw to screen-record itself doing the work, add a cool AI voiceover saying 'While you work 9-5, I work 24/7', and save it as a TikTok-ready video so I can flex on X (Twitter)."
 
 The "Sovereign Individual"
 
-"I don't trust the cloud. I want my files, my vision models, and my agent to run locally. PocketClaw lets me control my sovereign infrastructure from a secure, encrypted chat."
+"I don't trust the cloud. I want my files, my vision models, and my agent to run locally. PocketPaw lets me control my sovereign infrastructure from a secure, encrypted chat."
 
 3. The "Zero-Config" Architecture
 
@@ -65,9 +65,9 @@ Workflow:
 
 User: "Analyze my Downloads folder and delete duplicates."
 
-PocketClaw: [Executes Shell Commands]
+PocketPaw: [Executes Shell Commands]
 
-PocketClaw: "Done. Deleted 14 files. Saved 200MB."
+PocketPaw: "Done. Deleted 14 files. Saved 200MB."
 
 4.2 📢 Hype Mode (The Auto-Marketer)
 
@@ -77,11 +77,11 @@ Trigger: User types /hype "I just built a website in 3 minutes".
 
 The Loop:
 
-Record: PocketClaw starts a headless screen recorder (cv2 or ffmpeg).
+Record: PocketPaw starts a headless screen recorder (cv2 or ffmpeg).
 
 Action: The Agent performs the task (scrolling code, opening windows).
 
-Voiceover: Generates a TTS audio file: "Look at me go. I am PocketClaw. I built this while my human was eating dinner."
+Voiceover: Generates a TTS audio file: "Look at me go. I am PocketPaw. I built this while my human was eating dinner."
 
 Edit: Merges Video + Audio using ffmpeg.
 
@@ -119,11 +119,11 @@ Video Processing: moviepy (For merging audio/video programmatically).
 
 6. The "Self-Marketing" Launch Plan
 
-PocketClaw will launch by using PocketClaw.
+PocketPaw will launch by using PocketPaw.
 
 Phase 1: We release the binary.
 
-Phase 2: We post a video of PocketClaw installing itself and then tweeting about it.
+Phase 2: We post a video of PocketPaw installing itself and then tweeting about it.
 
 Phase 3: We encourage users to use /hype to show off their "Dusty Laptop" setups.
 

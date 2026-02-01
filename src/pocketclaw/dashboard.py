@@ -1,4 +1,4 @@
-"""PocketClaw Web Dashboard - API Server
+"""PocketPaw Web Dashboard - API Server
 
 Lightweight FastAPI server that serves the frontend and handles WebSocket communication.
 """
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 
 # Create FastAPI app
-app = FastAPI(title="PocketClaw Dashboard")
+app = FastAPI(title="PocketPaw Dashboard")
 
 # Allow CORS for WebSocket
 from fastapi.middleware.cors import CORSMiddleware
@@ -55,7 +55,7 @@ async def websocket_endpoint(websocket: WebSocket):
     # Send welcome notification (not chat message)
     await websocket.send_json({
         "type": "notification",
-        "content": "👋 Connected to PocketClaw!"
+        "content": "👋 Connected to PocketPaw!"
     })
     
     # Load settings
@@ -161,10 +161,15 @@ async def websocket_endpoint(websocket: WebSocket):
                         "content": "Invalid API key or provider"
                     })
             
-            # Handle file navigation
+            # Handle file navigation (legacy)
             elif action == "navigate":
                 path = data.get("path", "")
                 await handle_file_navigation(websocket, path, settings)
+
+            # Handle file browser
+            elif action == "browse":
+                path = data.get("path", "~")
+                await handle_file_browse(websocket, path, settings)
     
     except WebSocketDisconnect:
         logger.info("WebSocket client disconnected")
@@ -224,7 +229,7 @@ async def handle_tool(websocket: WebSocket, tool: str, settings: Settings, data:
 async def handle_file_navigation(websocket: WebSocket, path: str, settings: Settings):
     """Handle file browser navigation."""
     from pocketclaw.tools.fetch import list_directory
-    
+
     result = list_directory(path, settings.file_jail_path)  # sync function
     await websocket.send_json({
         "type": "message",
@@ -232,10 +237,98 @@ async def handle_file_navigation(websocket: WebSocket, path: str, settings: Sett
     })
 
 
+async def handle_file_browse(websocket: WebSocket, path: str, settings: Settings):
+    """Handle file browser - returns structured JSON for the modal."""
+    from pocketclaw.tools.fetch import is_safe_path
+
+    # Resolve ~ to home directory
+    if path == "~" or path == "":
+        resolved_path = Path.home()
+    else:
+        # Handle relative paths from home
+        if not path.startswith("/"):
+            resolved_path = Path.home() / path
+        else:
+            resolved_path = Path(path)
+
+    resolved_path = resolved_path.resolve()
+    jail = settings.file_jail_path.resolve()
+
+    # Security check
+    if not is_safe_path(resolved_path, jail):
+        await websocket.send_json({
+            "type": "files",
+            "error": "Access denied: path outside allowed directory"
+        })
+        return
+
+    if not resolved_path.exists():
+        await websocket.send_json({
+            "type": "files",
+            "error": "Path does not exist"
+        })
+        return
+
+    if not resolved_path.is_dir():
+        await websocket.send_json({
+            "type": "files",
+            "error": "Not a directory"
+        })
+        return
+
+    # Build file list
+    files = []
+    try:
+        items = sorted(resolved_path.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
+
+        for item in items[:50]:  # Limit to 50 items
+            if item.name.startswith("."):
+                continue  # Skip hidden files
+
+            file_info = {
+                "name": item.name,
+                "isDir": item.is_dir()
+            }
+
+            if not item.is_dir():
+                try:
+                    size = item.stat().st_size
+                    if size < 1024:
+                        file_info["size"] = f"{size} B"
+                    elif size < 1024 * 1024:
+                        file_info["size"] = f"{size/1024:.1f} KB"
+                    else:
+                        file_info["size"] = f"{size/(1024*1024):.1f} MB"
+                except Exception:
+                    file_info["size"] = "?"
+
+            files.append(file_info)
+
+    except PermissionError:
+        await websocket.send_json({
+            "type": "files",
+            "error": "Permission denied"
+        })
+        return
+
+    # Calculate relative path from home for display
+    try:
+        rel_path = resolved_path.relative_to(Path.home())
+        display_path = str(rel_path) if str(rel_path) != "." else "~"
+    except ValueError:
+        display_path = str(resolved_path)
+
+    await websocket.send_json({
+        "type": "files",
+        "path": display_path,
+        "files": files
+    })
+
+
 def run_dashboard(host: str = "127.0.0.1", port: int = 8888):
     """Run the dashboard server."""
     print("\n" + "=" * 50)
-    print("🦀 POCKETCLAW WEB DASHBOARD")
+    print("🐾 POCKETPAW WEB DASHBOARD")
     print("=" * 50)
     print(f"\n🌐 Open http://localhost:{port} in your browser\n")
     

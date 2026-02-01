@@ -67,7 +67,7 @@ class BotGateway:
                 pass  # Web server might already be shut down
             
             await update.message.reply_text(
-                "🦀 **PocketClaw Connected!**\n\n"
+                "🐾 **PocketPaw Connected!**\n\n"
                 "Your AI agent is now running on your machine.\n\n"
                 "Use the buttons below to control it, or just type a message to chat.",
                 parse_mode="Markdown",
@@ -75,7 +75,7 @@ class BotGateway:
             )
         elif self.is_authorized(user_id):
             await update.message.reply_text(
-                "🦀 **Welcome back!**\n\nPocketClaw is ready.",
+                "🐾 **Welcome back!**\n\nPocketPaw is ready.",
                 parse_mode="Markdown",
                 reply_markup=MAIN_KEYBOARD
             )
@@ -315,7 +315,7 @@ async def run_bot(settings: Settings) -> None:
     await app.start()
     await app.updater.start_polling(drop_pending_updates=True)
     
-    logger.info("🦀 PocketClaw is running! Send /start to your bot.")
+    logger.info("🐾 PocketPaw is running! Send /start to your bot.")
     
     # Keep running until stopped
     try:

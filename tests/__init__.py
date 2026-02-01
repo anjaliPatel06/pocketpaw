@@ -1,1 +1,1 @@
-# Tests for PocketClaw
+# Tests for PocketPaw

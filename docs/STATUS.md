@@ -1,4 +1,4 @@
-# PocketClaw: Project Status & Roadmap
+# PocketPaw: Project Status & Roadmap
 
 > Last updated: 2026-02-01
 
@@ -149,7 +149,7 @@ pocketclaw/
 # 1. Create a Telegram bot
 # Visit @BotFather, send /newbot, get token
 
-# 2. Run PocketClaw
+# 2. Run PocketPaw
 cd /Users/prakash/Documents/Qbtrix/pocketClaw
 uv run pocketclaw
 

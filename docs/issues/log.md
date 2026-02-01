@@ -1,4 +1,4 @@
-# PocketClaw Issues Log
+# PocketPaw Issues Log
 
 ## Issue #1: Agent UI Silent During Execution
 
@@ -60,7 +60,7 @@ Or use AppleScript to query the front VS Code window's title.
 
 ### Status
 
-This is an Open Interpreter limitation, not a PocketClaw bug. The agent made a reasonable inference but got it wrong.
+This is an Open Interpreter limitation, not a PocketPaw bug. The agent made a reasonable inference but got it wrong.
 
 ---
 

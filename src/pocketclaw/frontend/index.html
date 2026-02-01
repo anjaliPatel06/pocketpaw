@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PocketClaw</title>
+    <title>PocketPaw</title>
     <link
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><text y='32' font-size='32'>🦀</text></svg>"
@@ -14,6 +14,29 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/static/css/styles.css" />
+
+    <!-- UnoCSS Runtime (utilities alongside custom CSS) -->
+    <script>
+      window.__unocss = {
+        theme: {
+          colors: {
+            accent: '#0A84FF',
+            success: '#30D158',
+            danger: '#FF453A',
+            warning: '#FF9F0A',
+          }
+        },
+        shortcuts: {
+          'glass': 'bg-white/10 backdrop-blur-xl border border-white/12 rounded-2xl',
+          'glass-dark': 'bg-black/30 backdrop-blur-xl border border-white/12 rounded-2xl',
+        }
+      }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
     <script
       defer
       src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"
@@ -22,49 +45,67 @@
   <body x-data="app()" x-init="init()">
     <!-- Sidebar -->
     <aside class="sidebar">
-      <div class="logo"><span>🦀</span> PocketClaw</div>
+      <div class="logo flex items-center gap-3">
+        <i data-lucide="paw-print" class="w-6 h-6 text-accent"></i>
+        <span>PocketPaw</span>
+      </div>
 
       <!-- Tools Section -->
       <nav class="nav-section">
         <h3 class="nav-title">Tools</h3>
-        <button class="nav-item" @click="runTool('fetch')">
-          <span>📁</span> Files
+        <button class="nav-item flex items-center gap-3" @click="runTool('fetch')">
+          <i data-lucide="folder" class="w-5 h-5"></i>
+          <span>Files</span>
         </button>
-        <button class="nav-item" @click="runTool('screenshot')">
-          <span>📸</span> Screenshot
+        <button class="nav-item flex items-center gap-3" @click="runTool('screenshot')">
+          <i data-lucide="camera" class="w-5 h-5"></i>
+          <span>Screenshot</span>
         </button>
-        <button class="nav-item danger" @click="runTool('panic')">
-          <span>🛑</span> Panic Button
+        <button class="nav-item danger flex items-center gap-3" @click="runTool('panic')">
+          <i data-lucide="octagon-x" class="w-5 h-5"></i>
+          <span>Panic</span>
         </button>
       </nav>
 
       <!-- Config Section -->
       <nav class="nav-section">
         <h3 class="nav-title">Config</h3>
-        <button class="nav-item" @click="showSettings = true">
-          <span>⚙️</span> Settings
+        <button class="nav-item flex items-center gap-3" @click="showSettings = true">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+          <span>Settings</span>
         </button>
       </nav>
 
       <!-- System Status Widget -->
-      <div class="status-widget">
-        <h4 class="status-title">System Status</h4>
-        <div class="status-grid">
-          <div class="status-item">
-            <span class="status-label">CPU</span>
-            <span class="status-value" x-text="typeof status.cpu === 'number' ? status.cpu + '%' : status.cpu"></span>
+      <div class="glass-dark mt-auto p-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="flex items-center gap-2">
+            <i data-lucide="cpu" class="w-4 h-4 text-white/40"></i>
+            <div class="flex flex-col">
+              <span class="text-xs text-white/50">CPU</span>
+              <span class="text-sm font-mono" x-text="typeof status.cpu === 'number' ? status.cpu + '%' : status.cpu"></span>
+            </div>
           </div>
-          <div class="status-item">
-            <span class="status-label">RAM</span>
-            <span class="status-value" x-text="typeof status.ram === 'number' ? status.ram + '%' : status.ram"></span>
+          <div class="flex items-center gap-2">
+            <i data-lucide="memory-stick" class="w-4 h-4 text-white/40"></i>
+            <div class="flex flex-col">
+              <span class="text-xs text-white/50">RAM</span>
+              <span class="text-sm font-mono" x-text="typeof status.ram === 'number' ? status.ram + '%' : status.ram"></span>
+            </div>
           </div>
-          <div class="status-item">
-            <span class="status-label">Disk</span>
-            <span class="status-value" x-text="typeof status.disk === 'number' ? status.disk + '%' : status.disk"></span>
+          <div class="flex items-center gap-2">
+            <i data-lucide="hard-drive" class="w-4 h-4 text-white/40"></i>
+            <div class="flex flex-col">
+              <span class="text-xs text-white/50">Disk</span>
+              <span class="text-sm font-mono" x-text="typeof status.disk === 'number' ? status.disk + '%' : status.disk"></span>
+            </div>
           </div>
-          <div class="status-item">
-            <span class="status-label">Bat</span>
-            <span class="status-value" x-text="typeof status.battery === 'number' ? status.battery + '%' : status.battery"></span>
+          <div class="flex items-center gap-2">
+            <i data-lucide="battery-medium" class="w-4 h-4 text-white/40"></i>
+            <div class="flex flex-col">
+              <span class="text-xs text-white/50">Bat</span>
+              <span class="text-sm font-mono" x-text="typeof status.battery === 'number' ? status.battery + '%' : status.battery"></span>
+            </div>
           </div>
         </div>
       </div>
@@ -116,7 +157,7 @@
               <div class="message-header">
                 <span
                   class="message-author"
-                  x-text="msg.role === 'user' ? 'You' : 'PocketClaw'"
+                  x-text="msg.role === 'user' ? 'You' : 'PocketPaw'"
                 ></span>
                 <span class="message-time" x-text="msg.time"></span>
               </div>
@@ -130,7 +171,7 @@
               <span class="typing-indicator">▌</span>
             </div>
             <div class="message-header">
-              <span class="message-author">PocketClaw</span>
+              <span class="message-author">PocketPaw</span>
               <span class="message-time" x-text="currentTime()"></span>
             </div>
           </div>
@@ -149,7 +190,7 @@
             class="send-btn"
             :disabled="!inputText.trim() || isStreaming"
           >
-            <span>↑</span>
+            <i data-lucide="arrow-up" class="w-4 h-4"></i>
           </button>
         </form>
       </div>
@@ -177,7 +218,7 @@
       <div class="modal" @click.stop>
         <div class="modal-header">
           <h2>Settings</h2>
-          <button class="close-btn" @click="showSettings = false">×</button>
+          <button class="close-btn" @click="showSettings = false"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
         <div class="modal-body">
           <div class="form-group">
@@ -236,7 +277,7 @@
       <div class="modal modal-lg" @click.stop>
         <div class="modal-header">
           <h2>Screenshot</h2>
-          <button class="close-btn" @click="showScreenshot = false">×</button>
+          <button class="close-btn" @click="showScreenshot = false"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
         <div class="modal-body">
           <img
@@ -248,6 +289,90 @@
       </div>
     </div>
 
+    <!-- File Browser Modal -->
+    <div
+      class="modal-overlay"
+      x-show="showFileBrowser"
+      x-transition.opacity
+      @click.self="showFileBrowser = false"
+    >
+      <div class="modal modal-lg" @click.stop>
+        <div class="modal-header">
+          <h2>Files</h2>
+          <button class="close-btn" @click="showFileBrowser = false"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="modal-body">
+          <!-- UnoCSS: flex flex-col gap-4 instead of .file-browser -->
+          <div class="flex flex-col gap-4">
+
+            <!-- Path bar: UnoCSS for layout, keep custom styling -->
+            <div class="file-path flex items-center gap-1">
+              <span class="file-path-home flex items-center gap-1" @click="navigateTo('~')">
+                <i data-lucide="home" class="w-4 h-4"></i>
+              </span>
+              <template x-for="(segment, i) in filePath.split('/').filter(s => s)" :key="i">
+                <span class="flex items-center">
+                  <span class="text-white/30 mx-1">/</span>
+                  <span
+                    class="cursor-pointer hover:text-accent transition-colors"
+                    @click="navigateToSegment(i)"
+                    x-text="segment"
+                  ></span>
+                </span>
+              </template>
+            </div>
+
+            <!-- Loading State -->
+            <template x-if="fileLoading">
+              <div class="p-8 text-center text-white/60 flex flex-col items-center gap-2">
+                <i data-lucide="loader-2" class="w-6 h-6 animate-spin"></i>
+                <span>Loading...</span>
+              </div>
+            </template>
+
+            <!-- Error State -->
+            <template x-if="!fileLoading && fileError">
+              <div class="p-4 text-center text-danger bg-danger/10 rounded-lg" x-text="fileError"></div>
+            </template>
+
+            <!-- File List (only when loaded and no error) -->
+            <template x-if="!fileLoading && !fileError">
+              <div class="file-list">
+                <!-- Parent Directory (only when not at home) -->
+                <template x-if="filePath && filePath !== '~' && filePath !== '.'">
+                  <div
+                    class="file-item flex items-center gap-3 text-accent"
+                    @click="navigateUp()"
+                  >
+                    <i data-lucide="corner-left-up" class="w-5 h-5"></i>
+                    <span class="flex-1 font-medium">..</span>
+                  </div>
+                </template>
+
+                <!-- Files & Folders -->
+                <template x-for="item in files" :key="item.name">
+                  <div class="file-item flex items-center gap-3" @click="selectFile(item)">
+                    <svg x-show="item.isDir" class="w-5 h-5 text-white/60" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+                    <svg x-show="!item.isDir" class="w-5 h-5 text-white/60" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                    <span class="flex-1 font-medium truncate" x-text="item.name + (item.isDir ? '/' : '')"></span>
+                    <span class="text-xs text-white/30 font-mono" x-show="!item.isDir" x-text="item.size"></span>
+                  </div>
+                </template>
+
+                <!-- Empty State -->
+                <template x-if="files.length === 0">
+                  <div class="p-8 text-center text-white/40 flex flex-col items-center gap-2">
+                    <i data-lucide="folder-open" class="w-8 h-8"></i>
+                    <span>Empty directory</span>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Toast Container -->
     <div class="toast-container" x-ref="toasts"></div>
 
@@ -255,5 +380,20 @@
     <script src="/static/js/websocket.js"></script>
     <script src="/static/js/tools.js"></script>
     <script src="/static/js/app.js"></script>
+
+    <!-- Initialize Lucide icons -->
+    <script>
+      // Initial render
+      document.addEventListener('DOMContentLoaded', () => {
+        lucide.createIcons();
+      });
+
+      // Debounced refresh for dynamic content
+      let iconTimeout;
+      window.refreshIcons = () => {
+        clearTimeout(iconTimeout);
+        iconTimeout = setTimeout(() => lucide.createIcons(), 50);
+      };
+    </script>
   </body>
 </html>

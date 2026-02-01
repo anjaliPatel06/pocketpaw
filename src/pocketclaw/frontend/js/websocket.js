@@ -1,9 +1,9 @@
 /**
- * PocketClaw WebSocket Module
+ * PocketPaw WebSocket Module
  * Singleton WebSocket connection with proper state management
  */
 
-class PocketClawSocket {
+class PocketPawSocket {
     constructor() {
         this.ws = null;
         this.handlers = new Map();
@@ -174,4 +174,4 @@ class PocketClawSocket {
 }
 
 // Export singleton - only one instance ever
-window.socket = window.socket || new PocketClawSocket();
+window.socket = window.socket || new PocketPawSocket();

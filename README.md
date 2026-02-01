@@ -1,4 +1,4 @@
-# 🦀 PocketClaw
+# 🐾 PocketPaw
 
 > **The AI agent that runs on your laptop, not a datacenter.**
 
@@ -6,7 +6,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![UV](https://img.shields.io/badge/uv-package%20manager-blueviolet)](https://docs.astral.sh/uv/)
 
-PocketClaw is a self-hosted, cross-platform personal AI agent you control via **Telegram**. Unlike cloud-hosted AI assistants, PocketClaw runs on _your_ machine, respects _your_ privacy, and works even on that dusty laptop in your closet.
+PocketPaw is a self-hosted, cross-platform personal AI agent you control via **Telegram**. Unlike cloud-hosted AI assistants, PocketPaw runs on _your_ machine, respects _your_ privacy, and works even on that dusty laptop in your closet.
 
 ## ✨ Features
 
@@ -46,7 +46,7 @@ That's it! UV will:
 
 1. Create a virtual environment
 2. Install all dependencies
-3. Run PocketClaw
+3. Run PocketPaw
 4. Open your browser for setup
 
 ### One-liner (after release)
@@ -79,7 +79,7 @@ Agent: "Done! Showing weather results."
 
 ## ⚙️ Configuration
 
-PocketClaw stores config in `~/.pocketclaw/config.json`:
+PocketPaw stores config in `~/.pocketclaw/config.json`:
 
 ```json
 {
@@ -144,4 +144,4 @@ PRs welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📄 License
 
-MIT © PocketClaw Team
+MIT © PocketPaw Team
