@@ -31,7 +31,7 @@ class WebSocketAdapter(BaseChannelAdapter):
 
     async def register_connection(self, websocket: WebSocket, chat_id: str) -> None:
         """Register a new WebSocket connection."""
-        await websocket.accept()
+        # Assume connection is already accepted by the handler
         self._connections[chat_id] = websocket
         logger.info(f"🔌 WebSocket connected: {chat_id}")
 
@@ -52,6 +52,16 @@ class WebSocketAdapter(BaseChannelAdapter):
                 content=data.get("message", ""),
                 metadata=data,
             )
+
+            
+            # Send stream_start to frontend to initialize the response UI
+            ws = self._connections.get(chat_id)
+            if ws:
+                try:
+                    await ws.send_json({"type": "stream_start"})
+                except Exception:
+                    pass
+            
             await self._publish_inbound(message)
         # Other actions (settings, tools) handled separately
 
@@ -68,12 +78,23 @@ class WebSocketAdapter(BaseChannelAdapter):
     async def _send_to_socket(self, ws: WebSocket, message: OutboundMessage) -> None:
         """Send to a specific WebSocket."""
         try:
-            msg_type = "stream" if message.is_stream_chunk else "message"
+
+            if message.is_stream_end:
+                await ws.send_json({"type": "stream_end"})
+                return
+
+            # Legacy frontend expects 'message' for chunks too
+            msg_type = "message" 
+            
+            # If it's the very first chunk, we might want to send stream_start? 
+            # But we don't track state easily here. 
+            # Let's hope frontend doesn't strictly need stream_start if it's already waiting.
+            # (Legacy dashboard.py sent stream_start before headers)
+            
             await ws.send_json({
                 "type": msg_type,
                 "content": message.content,
                 "metadata": message.metadata,
-                "is_stream_end": message.is_stream_end,
             })
         except Exception:
             pass  # Connection closed

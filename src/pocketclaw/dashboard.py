@@ -19,15 +19,22 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from pocketclaw.config import Settings
-from pocketclaw.llm.router import LLMRouter
-from pocketclaw.agents.router import AgentRouter
+
 from pocketclaw.scheduler import get_scheduler
 from pocketclaw.daemon import get_daemon
 from pocketclaw.skills import get_skill_loader, SkillExecutor
+# New imports for Nanobot Architecture
+from pocketclaw.bus import get_message_bus
+from pocketclaw.bus.adapters.websocket_adapter import WebSocketAdapter
+from pocketclaw.agents.loop import AgentLoop
+import uuid
 
 logger = logging.getLogger(__name__)
 
-# Active WebSocket connections for reminder notifications
+# Global Nanobot Components
+ws_adapter = WebSocketAdapter()
+agent_loop = AgentLoop()
+# Retain active_connections for legacy broadcasts until fully migrated
 active_connections: list[WebSocket] = []
 
 # Get frontend directory
@@ -53,17 +60,19 @@ app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 async def broadcast_reminder(reminder: dict):
     """Broadcast a reminder notification to all connected clients."""
+    # Use new adapter for broadcast
+    await ws_adapter.broadcast(reminder, msg_type="reminder")
+    
+    # Legacy broadcast (backup)
     message = {
         "type": "reminder",
         "reminder": reminder
     }
-    for ws in active_connections[:]:  # Copy list to avoid modification during iteration
+    for ws in active_connections[:]:
         try:
             await ws.send_json(message)
         except Exception:
-            # Connection might be closed
-            if ws in active_connections:
-                active_connections.remove(ws)
+            pass
 
 
 async def broadcast_intention(intention_id: str, chunk: dict):
@@ -83,30 +92,38 @@ async def broadcast_intention(intention_id: str, chunk: dict):
 
 @app.on_event("startup")
 async def startup_event():
-    """Start the scheduler and daemon on app startup."""
+    """Start services on app startup."""
+    # Start Message Bus Integration
+    bus = get_message_bus()
+    await ws_adapter.start(bus)
+    
+    # Start Agent Loop
+    asyncio.create_task(agent_loop.start())
+    logger.info("🧠 Agent Loop started (Nanobot Architecture)")
+
     # Start reminder scheduler
     scheduler = get_scheduler()
     scheduler.start(callback=broadcast_reminder)
-    logger.info("Reminder scheduler started")
-
+    
     # Start proactive daemon
     daemon = get_daemon()
     daemon.start(stream_callback=broadcast_intention)
-    logger.info("Proactive daemon started")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Stop the scheduler and daemon on app shutdown."""
+    """Stop services on app shutdown."""
+    # Stop Agent Loop
+    await agent_loop.stop()
+    await ws_adapter.stop()
+    
     # Stop proactive daemon
     daemon = get_daemon()
     daemon.stop()
-    logger.info("Proactive daemon stopped")
 
     # Stop reminder scheduler
     scheduler = get_scheduler()
     scheduler.stop()
-    logger.info("Reminder scheduler stopped")
 
 
 @app.get("/")
@@ -120,100 +137,54 @@ async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time communication."""
     await websocket.accept()
 
-    # Track connection for reminder broadcasts
+    # Track connection
     active_connections.append(websocket)
+    
+    # Generate session ID for Nanobot bus
+    chat_id = str(uuid.uuid4())
+    await ws_adapter.register_connection(websocket, chat_id)
 
-    # Send welcome notification (not chat message)
+    # Send welcome notification
     await websocket.send_json({
         "type": "notification",
-        "content": "👋 Connected to PocketPaw!"
+        "content": "👋 Connected to PocketPaw (Nanobot V2)"
     })
 
-    # Load settings from config file
+    # Load settings
     settings = Settings.load()
     
-    # State
-    agent_active = False
-    llm_router: Optional[LLMRouter] = None
-    agent_router: Optional[AgentRouter] = None
+    # Legacy state
+    agent_active = False 
+    agent_active = False 
     
     try:
         while True:
             data = await websocket.receive_json()
             action = data.get("action")
             
-            # Handle tool requests
-            if action == "tool":
+            # Handle chat via MessageBus (Nanobot)
+            if action == "chat":
+                # Only if using new backend, but let's default to new backend logic eventually
+                # For Phase 2 transition: We use the Bus!
+                # But allow fallback to old router if 'agent_active' is toggled specifically for old behavior?
+                # Actually, let's treat 'chat' as input to the Bus.
+                await ws_adapter.handle_message(chat_id, data)
+            
+            # Legacy/Other actions
+            elif action == "tool":
                 tool = data.get("tool")
                 await handle_tool(websocket, tool, settings, data)
             
-            # Handle agent toggle
+            # Handle agent toggle (Legacy router control)
             elif action == "toggle_agent":
+                # For now, this just logs, as the Loop is always running in background
+                # functionality-wise, but maybe we should respect this flag in the Loop?
                 agent_active = data.get("active", False)
-                
-                if agent_active:
-                    # Check if we need to recreate the router (new or backend changed)
-                    need_new_router = agent_router is None
-                    
-                    # Check if backend changed
-                    if agent_router and hasattr(agent_router, 'settings'):
-                        current_backend = getattr(agent_router.settings, 'agent_backend', None)
-                        if current_backend != settings.agent_backend:
-                            logger.info(f"🔄 Agent backend changed: {current_backend} → {settings.agent_backend}")
-                            need_new_router = True
-                    
-                    if need_new_router:
-                        agent_router = AgentRouter(settings)
-                        logger.info(f"🤖 Agent activated: backend={settings.agent_backend}, llm={settings.llm_provider}")
-                else:
-                    logger.info("🛑 Agent deactivated")
-                
                 await websocket.send_json({
                     "type": "notification",
-                    "content": f"🧠 Agent Mode: {'ON' if agent_active else 'OFF'}"
+                    "content": f"Legacy Mode: {'ON' if agent_active else 'OFF'} (Bus is always active)"
                 })
-            
-            # Handle chat
-            elif action == "chat":
-                message = data.get("message", "")
-                
-                if agent_active and agent_router:
-                    # Stream agent responses
-                    backend_name = settings.agent_backend
-                    logger.info(f"💬 [bold cyan]{backend_name}[/] → \"{message[:60]}{'...' if len(message) > 60 else ''}\"")
-                    await websocket.send_json({"type": "stream_start"})
-                    try:
-                        async for chunk in agent_router.run(message):
-                            await websocket.send_json(chunk)
-                    except Exception as e:
-                        logger.error(f"Agent error: {e}")
-                        await websocket.send_json({
-                            "type": "error",
-                            "content": f"Agent Error: {str(e)}"
-                        })
-                    finally:
-                        await websocket.send_json({"type": "stream_end"})
-                else:
-                    # Simple LLM response
-                    if not llm_router:
-                        llm_router = LLMRouter(settings)
-                    
-                    await websocket.send_json({"type": "stream_start"})
-                    try:
-                        response = await llm_router.chat(message)
-                        await websocket.send_json({
-                            "type": "message",
-                            "content": response
-                        })
-                    except Exception as e:
-                        logger.error(f"LLM chat error: {e}")
-                        await websocket.send_json({
-                            "type": "error",
-                            "content": f"LLM Error: {str(e)}"
-                        })
-                    finally:
-                        await websocket.send_json({"type": "stream_end"})
-            
+
             # Handle settings update
             elif action == "settings":
                 settings.agent_backend = data.get("agent_backend", settings.agent_backend)
@@ -224,14 +195,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     settings.bypass_permissions = bool(data.get("bypass_permissions"))
                 settings.save()
                 
-                # Reset routers to pick up new settings
-                llm_router = None
-                agent_router = None
+                # Update Loop settings if needed (it reloads on each message via get_settings inside loop currently)
                 
                 await websocket.send_json({
                     "type": "message",
                     "content": "⚙️ Settings updated"
                 })
+                
+            # ... keep other handlers ... (abbreviated)
+
             
             # Handle API key save
             elif action == "save_api_key":
@@ -242,8 +214,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     settings.anthropic_api_key = key
                     settings.llm_provider = "anthropic"
                     settings.save()
-                    llm_router = None
-                    agent_router = None
+                    settings.save()
                     await websocket.send_json({
                         "type": "message",
                         "content": "✅ Anthropic API key saved!"
@@ -252,8 +223,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     settings.openai_api_key = key
                     settings.llm_provider = "openai"
                     settings.save()
-                    llm_router = None
-                    agent_router = None
+                    settings.save()
                     await websocket.send_json({
                         "type": "message",
                         "content": "✅ OpenAI API key saved!"
@@ -268,12 +238,8 @@ async def websocket_endpoint(websocket: WebSocket):
             elif action == "get_settings":
                 # Get agent status if available
                 agent_status = None
-                if agent_router and hasattr(agent_router, '_agent'):
-                    try:
-                        if hasattr(agent_router._agent, 'get_status'):
-                            agent_status = await agent_router._agent.get_status()
-                    except Exception as e:
-                        logger.debug(f"Could not get agent status: {e}")
+                # Get agent status if available
+                agent_status = {"status": "running" if agent_loop._running else "stopped", "backend": "AgentLoop"}
 
                 await websocket.send_json({
                     "type": "settings",
@@ -487,6 +453,7 @@ async def websocket_endpoint(websocket: WebSocket):
         # Remove connection from tracking
         if websocket in active_connections:
             active_connections.remove(websocket)
+        await ws_adapter.unregister_connection(chat_id)
 
 
 async def handle_tool(websocket: WebSocket, tool: str, settings: Settings, data: dict):
