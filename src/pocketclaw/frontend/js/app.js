@@ -3,6 +3,7 @@
  * Alpine.js component for the dashboard
  *
  * Changes (2026-02-04):
+ * - Fixed: Don't log streaming chunks to terminal (prevents word-by-word flood)
  * - Added Telegram setup in "Take Paw With You" modal
  * - Added remoteTab state for QR/Telegram tabs
  * - Added telegramStatus, telegramForm, telegramLoading state
@@ -285,11 +286,14 @@ function app() {
                 this.streamingContent += content;
                 // Scroll during streaming to follow new content
                 this.$nextTick(() => this.scrollToBottom());
+                // Don't log streaming chunks - they flood the terminal
             } else {
                 this.addMessage('assistant', content);
+                // Only log complete messages (not streaming chunks)
+                if (content.trim()) {
+                    this.log(content.substring(0, 100) + (content.length > 100 ? '...' : ''), 'info');
+                }
             }
-
-            this.log(content.substring(0, 80) + (content.length > 80 ? '...' : ''), 'info');
         },
 
         /**
