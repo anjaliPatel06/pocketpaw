@@ -3,6 +3,7 @@
 Lightweight FastAPI server that serves the frontend and handles WebSocket communication.
 
 Changes:
+  - 2026-02-05: Added Mission Control API router at /api/mission-control/*.
   - 2026-02-04: Added Telegram setup API endpoints (/api/telegram/status, /api/telegram/setup, /api/telegram/pairing-status).
   - 2026-02-03: Cleaned up duplicate imports, fixed duplicate save() calls.
   - 2026-02-02: Added agent status to get_settings response.
@@ -31,6 +32,7 @@ from pocketclaw.bus.adapters.websocket_adapter import WebSocketAdapter
 from pocketclaw.config import Settings, get_access_token, get_config_path, regenerate_token
 from pocketclaw.daemon import get_daemon
 from pocketclaw.memory import MemoryType, get_memory_manager
+from pocketclaw.mission_control.api import router as mission_control_router
 from pocketclaw.scheduler import get_scheduler
 from pocketclaw.security import get_audit_logger
 from pocketclaw.skills import SkillExecutor, get_skill_loader
@@ -65,6 +67,9 @@ app.add_middleware(
 
 # Mount static files
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+# Mount Mission Control API router
+app.include_router(mission_control_router, prefix="/api/mission-control")
 
 
 async def broadcast_reminder(reminder: dict):
@@ -761,8 +766,8 @@ async def get_identity():
 @app.get("/api/memory/sessions")
 async def list_sessions(limit: int = 20):
     """List all available sessions with metadata."""
-    from pathlib import Path
     import json
+    from pathlib import Path
 
     sessions_path = Path.home() / ".pocketclaw" / "memory" / "sessions"
 
@@ -770,7 +775,9 @@ async def list_sessions(limit: int = 20):
         return []
 
     sessions = []
-    for session_file in sorted(sessions_path.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+    for session_file in sorted(
+        sessions_path.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+    ):
         if len(sessions) >= limit:
             break
 
@@ -781,14 +788,16 @@ async def list_sessions(limit: int = 20):
                 first_msg = data[0] if data else {}
                 last_msg = data[-1] if data else {}
 
-                sessions.append({
-                    "id": session_file.stem,  # Remove .json extension
-                    "message_count": len(data),
-                    "first_message": first_msg.get("content", "")[:100],
-                    "last_message": last_msg.get("content", "")[:100],
-                    "updated_at": last_msg.get("timestamp", ""),
-                    "created_at": first_msg.get("timestamp", ""),
-                })
+                sessions.append(
+                    {
+                        "id": session_file.stem,  # Remove .json extension
+                        "message_count": len(data),
+                        "first_message": first_msg.get("content", "")[:100],
+                        "last_message": last_msg.get("content", "")[:100],
+                        "updated_at": last_msg.get("timestamp", ""),
+                        "created_at": first_msg.get("timestamp", ""),
+                    }
+                )
         except (json.JSONDecodeError, KeyError):
             continue
 

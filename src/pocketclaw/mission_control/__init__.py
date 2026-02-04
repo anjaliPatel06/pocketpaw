@@ -45,6 +45,8 @@ Usage:
 
 # Models
 # Manager
+# API
+from pocketclaw.mission_control.api import router as mission_control_router
 from pocketclaw.mission_control.manager import (
     MissionControlManager,
     get_mission_control_manager,
@@ -94,4 +96,6 @@ __all__ = [
     "MissionControlManager",
     "get_mission_control_manager",
     "reset_mission_control_manager",
+    # API
+    "mission_control_router",
 ]
