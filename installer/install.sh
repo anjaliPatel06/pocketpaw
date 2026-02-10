@@ -236,4 +236,9 @@ if [ "$UV_AVAILABLE" = "1" ]; then
     UV_FLAG="--uv-available"
 fi
 
-"$PYTHON" "$INSTALLER" --pip-cmd "$PIP_CMD" $UV_FLAG "$@"
+# Restore stdin from terminal (stdin is exhausted when piped via curl|sh)
+if [ ! -t 0 ] && [ -e /dev/tty ]; then
+    "$PYTHON" "$INSTALLER" --pip-cmd "$PIP_CMD" $UV_FLAG "$@" < /dev/tty
+else
+    "$PYTHON" "$INSTALLER" --pip-cmd "$PIP_CMD" $UV_FLAG "$@"
+fi
