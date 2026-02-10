@@ -723,14 +723,16 @@ class PackageInstaller:
         else:
             pkg = PACKAGE
 
+        # Prefer `uv tool install` — isolated venv, no sudo, no PEP 668
+        if shutil.which("uv"):
+            ok = self._install_with_uv_tool(pkg, upgrade)
+            if ok:
+                return True
+
+        # Fallback: pip install --user
         cmd_parts = self.pip_cmd.split() + ["install"]
         if not _in_virtualenv():
-            if "uv" in self.pip_cmd:
-                # uv pip outside a virtualenv needs --system
-                cmd_parts.append("--system")
-            else:
-                # pip outside a virtualenv: install to ~/.local
-                cmd_parts.append("--user")
+            cmd_parts.append("--user")
         if upgrade:
             cmd_parts.append("--upgrade")
         cmd_parts.append(pkg)
@@ -745,11 +747,28 @@ class PackageInstaller:
         if ok:
             return True
 
-        # PEP 668 retry: add --break-system-packages for pip
-        if "uv" not in self.pip_cmd and "externally-managed-environment" in stderr_text:
+        # PEP 668 retry: add --break-system-packages
+        if "externally-managed-environment" in stderr_text:
             return self._retry_with_pep668_workaround(cmd_parts, pkg)
 
         return False
+
+    def _install_with_uv_tool(self, pkg: str, upgrade: bool) -> bool:
+        """Install using `uv tool install` — isolated venv in ~/.local/share/uv/tools/."""
+        cmd = ["uv", "tool", "install"]
+        if upgrade:
+            cmd.append("--upgrade")
+        else:
+            # --force allows reinstall if already present
+            cmd.append("--force")
+        cmd.append(pkg)
+
+        if _HAS_RICH and console:
+            with console.status(f"[bold cyan]Installing {pkg} (uv tool)...[/bold cyan]"):
+                return self._run_cmd(cmd)
+        else:
+            print(f"  Installing {pkg} (uv tool)...")
+            return self._run_cmd(cmd)
 
     def install_playwright(self) -> bool:
         """Install Playwright browsers."""
