@@ -7,6 +7,7 @@ Changes:
   - 2026-02-06: Channel config REST API (GET /api/channels/status, POST save/toggle).
   - 2026-02-06: Refactored adapter storage to _channel_adapters dict; auto-start all configured.
   - 2026-02-06: Auto-start Discord/WhatsApp adapters alongside dashboard; WhatsApp webhook routes.
+  - 2026-02-12: Fixed handle_file_browse bug: filter hidden files BEFORE applying 50-item limit.
   - 2026-02-12: Added Deep Work API router at /api/deep-work/*.
   - 2026-02-05: Added Mission Control API router at /api/mission-control/*.
   - 2026-02-04: Added Telegram setup API endpoints (/api/telegram/status, /api/telegram/setup, /api/telegram/pairing-status).
@@ -2553,11 +2554,10 @@ async def handle_file_browse(websocket: WebSocket, path: str, settings: Settings
     files = []
     try:
         items = sorted(resolved_path.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
+        # Filter hidden files BEFORE applying the limit so dotfiles don't consume quota
+        visible_items = [item for item in items if not item.name.startswith(".")]
 
-        for item in items[:50]:  # Limit to 50 items
-            if item.name.startswith("."):
-                continue  # Skip hidden files
-
+        for item in visible_items[:50]:  # Limit to 50 visible items
             file_info = {"name": item.name, "isDir": item.is_dir()}
 
             if not item.is_dir():
