@@ -399,7 +399,7 @@ class TestWebSocketSessionSwitching:
     def test_websocket_resume_session(self, client):
         """Test resume_session query parameter."""
         # Create a session file
-        sessions_dir = Path.home() / ".pocketclaw" / "memory" / "sessions"
+        sessions_dir = Path.home() / ".pocketpaw" / "memory" / "sessions"
         sessions_dir.mkdir(parents=True, exist_ok=True)
         test_id = str(uuid.uuid4())
         safe_key = f"websocket_{test_id}"

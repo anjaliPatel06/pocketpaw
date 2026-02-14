@@ -137,7 +137,7 @@ async def test_run_self_audit(tmp_path):
     mock_settings.anthropic_api_key = "test-key"
     mock_settings.file_jail_path = tmp_path
 
-    config_dir = tmp_path / ".pocketclaw"
+    config_dir = tmp_path / ".pocketpaw"
     config_dir.mkdir()
     (config_dir / "config.json").write_text("{}")
     (config_dir / "audit.jsonl").write_text("")

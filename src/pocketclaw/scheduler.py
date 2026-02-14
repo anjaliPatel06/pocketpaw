@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 def get_reminders_path() -> Path:
     """Get the reminders file path."""
-    config_dir = Path.home() / ".pocketclaw"
+    config_dir = Path.home() / ".pocketpaw"
     config_dir.mkdir(exist_ok=True)
     return config_dir / "reminders.json"
 

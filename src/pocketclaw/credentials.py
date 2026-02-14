@@ -82,7 +82,7 @@ class CredentialStore:
 
     def __init__(self, config_dir: Path | None = None):
         if config_dir is None:
-            config_dir = Path.home() / ".pocketclaw"
+            config_dir = Path.home() / ".pocketpaw"
         self._config_dir = config_dir
         self._secrets_path = config_dir / "secrets.enc"
         self._salt_path = config_dir / ".salt"

@@ -30,7 +30,7 @@ VERSION = "0.3.0"
 PACKAGE = "pocketpaw"
 GIT_REPO = "https://github.com/pocketpaw/pocketpaw.git"
 GIT_BRANCH = "main"
-CONFIG_DIR = Path.home() / ".pocketclaw"
+CONFIG_DIR = Path.home() / ".pocketpaw"
 CONFIG_PATH = CONFIG_DIR / "config.json"
 
 # ── InquirerPy / Rich Bootstrap ────────────────────────────────────────

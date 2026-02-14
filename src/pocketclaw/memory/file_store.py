@@ -160,7 +160,7 @@ class FileMemoryStore:
     """
 
     def __init__(self, base_path: Path | None = None):
-        self.base_path = base_path or (Path.home() / ".pocketclaw" / "memory")
+        self.base_path = base_path or (Path.home() / ".pocketpaw" / "memory")
         self.base_path.mkdir(parents=True, exist_ok=True)
 
         # Sub-directories

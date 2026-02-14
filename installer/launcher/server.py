@@ -17,7 +17,7 @@ import urllib.request
 from pathlib import Path
 
 from installer.launcher.common import (
-    POCKETCLAW_HOME,
+    POCKETPAW_HOME,
     VENV_DIR,
     StatusCallback,
     noop_status,
@@ -25,7 +25,7 @@ from installer.launcher.common import (
 
 logger = logging.getLogger(__name__)
 
-PID_FILE = POCKETCLAW_HOME / "launcher.pid"
+PID_FILE = POCKETPAW_HOME / "launcher.pid"
 DEFAULT_PORT = 8888
 
 
@@ -68,7 +68,7 @@ class ServerManager:
         try:
             # Start the server process — redirect output to a log file
             # instead of PIPE to avoid OS pipe buffer deadlock (64KB limit)
-            log_file = POCKETCLAW_HOME / "server.log"
+            log_file = POCKETPAW_HOME / "server.log"
             self._log_fh = open(log_file, "a", encoding="utf-8")  # noqa: SIM115
             env = self._build_env()
             self._process = subprocess.Popen(
@@ -181,7 +181,7 @@ class ServerManager:
             venv_bin = str(VENV_DIR / "bin")
 
         # Also add the uv directory so pocketclaw's auto_install can find uv
-        uv_dir = str(POCKETCLAW_HOME / "uv")
+        uv_dir = str(POCKETPAW_HOME / "uv")
         env["PATH"] = venv_bin + os.pathsep + uv_dir + os.pathsep + env.get("PATH", "")
 
         env["VIRTUAL_ENV"] = str(VENV_DIR)
@@ -192,7 +192,7 @@ class ServerManager:
 
         # Set UV_OVERRIDE so any uv invocation (including pocketclaw's
         # internal auto_install) uses our tiktoken override
-        overrides_file = POCKETCLAW_HOME / "uv-overrides.txt"
+        overrides_file = POCKETPAW_HOME / "uv-overrides.txt"
         if not overrides_file.exists():
             # Ensure the overrides file exists even if bootstrap was skipped
             try:
@@ -219,7 +219,7 @@ class ServerManager:
                 rc = self._process.returncode
                 log_tail = ""
                 try:
-                    log_file = POCKETCLAW_HOME / "server.log"
+                    log_file = POCKETPAW_HOME / "server.log"
                     if log_file.exists():
                         log_tail = log_file.read_text(encoding="utf-8", errors="replace")[-2000:]
                 except Exception:
@@ -311,7 +311,7 @@ class ServerManager:
 
     def _read_port_from_config(self) -> int | None:
         """Read the web port from the PocketPaw config file."""
-        config_path = POCKETCLAW_HOME / "config.json"
+        config_path = POCKETPAW_HOME / "config.json"
         if config_path.exists():
             try:
                 config = json.loads(config_path.read_text())

@@ -61,7 +61,7 @@ class FileMissionControlStore:
             base_path: Directory for storage files. Defaults to ~/.pocketpaw/mission_control/
         """
         if base_path is None:
-            base_path = Path.home() / ".pocketclaw" / "mission_control"
+            base_path = Path.home() / ".pocketpaw" / "mission_control"
 
         self.base_path = base_path
         self.base_path.mkdir(parents=True, exist_ok=True)

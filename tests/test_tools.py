@@ -184,7 +184,7 @@ class TestConfig:
         result = get_config_dir()
 
         assert result.exists()
-        assert result.name == ".pocketclaw"
+        assert result.name == ".pocketpaw"
 
 
 class TestLLMRouter:

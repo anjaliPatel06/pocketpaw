@@ -62,7 +62,7 @@ def dashboard_server(dashboard_port: int):
     Yields the base URL for the dashboard.
     """
     # Set test environment
-    os.environ["POCKETCLAW_TEST_MODE"] = "1"
+    os.environ["POCKETPAW_TEST_MODE"] = "1"
 
     # Start server in subprocess
     process = Process(target=run_dashboard, args=(dashboard_port,))

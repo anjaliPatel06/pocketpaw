@@ -29,7 +29,7 @@ def _chmod_safe(path: Path, mode: int) -> None:
 
 def get_config_dir() -> Path:
     """Get the config directory, creating if needed."""
-    config_dir = Path.home() / ".pocketclaw"
+    config_dir = Path.home() / ".pocketpaw"
     config_dir.mkdir(exist_ok=True)
     _chmod_safe(config_dir, 0o700)
     return config_dir
@@ -48,7 +48,7 @@ def get_token_path() -> Path:
 class Settings(BaseSettings):
     """PocketPaw settings with env and file support."""
 
-    model_config = SettingsConfigDict(env_prefix="POCKETCLAW_", env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="POCKETPAW_", env_file=".env", extra="ignore")
 
     # Telegram
     telegram_bot_token: str | None = Field(

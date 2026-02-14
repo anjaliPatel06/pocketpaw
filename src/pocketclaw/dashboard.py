@@ -1027,7 +1027,7 @@ async def remove_skill(request: Request):
         return JSONResponse({"error": "Invalid name format"}, status_code=400)
 
     # Check both skill locations
-    for base in [Path.home() / ".agents" / "skills", Path.home() / ".pocketclaw" / "skills"]:
+    for base in [Path.home() / ".agents" / "skills", Path.home() / ".pocketpaw" / "skills"]:
         skill_dir = base / name
         if skill_dir.is_dir() and (skill_dir / "SKILL.md").exists():
             shutil.rmtree(skill_dir)
@@ -2109,7 +2109,7 @@ async def websocket_endpoint(
             session_key = f"websocket:{raw_id}"
             # Verify session file exists
             session_file = (
-                Path.home() / ".pocketclaw" / "memory" / "sessions" / f"{resume_session}.json"
+                Path.home() / ".pocketpaw" / "memory" / "sessions" / f"{resume_session}.json"
             )
             if session_file.exists():
                 chat_id = raw_id

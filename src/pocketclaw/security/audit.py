@@ -77,7 +77,7 @@ class AuditLogger:
             # Default to adjacent to config file, or explicit audit path
             # Since settings might not have audit_path, we derive it.
             # Assuming settings.config_path is ~/.pocketpaw/config.json
-            base_dir = Path.home() / ".pocketclaw"
+            base_dir = Path.home() / ".pocketpaw"
             base_dir.mkdir(parents=True, exist_ok=True)
             self.log_path = base_dir / "audit.jsonl"
 

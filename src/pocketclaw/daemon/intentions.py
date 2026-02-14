@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def get_intentions_path() -> Path:
     """Get path to intentions JSON file."""
-    config_dir = Path.home() / ".pocketclaw"
+    config_dir = Path.home() / ".pocketpaw"
     config_dir.mkdir(exist_ok=True)
     return config_dir / "intentions.json"
 
