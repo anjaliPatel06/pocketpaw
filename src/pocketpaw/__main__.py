@@ -1,6 +1,7 @@
 """PocketPaw entry point.
 
 Changes:
+  - 2026-02-16: Add startup version check against PyPI (cached daily, silent on error).
   - 2026-02-14: Dashboard deps moved to core — `pip install pocketpaw` just works.
   - 2026-02-12: Fixed --version to read dynamically from package metadata.
   - 2026-02-06: Web dashboard is now the default mode (no flags needed).
@@ -563,6 +564,14 @@ Examples:
     _check_extras_installed(args)
 
     settings = get_settings()
+
+    # Check for updates (cached daily, silent on error)
+    from pocketpaw.config import get_config_dir
+    from pocketpaw.update_check import check_for_updates, print_update_notice
+
+    update_info = check_for_updates(get_version("pocketpaw"), get_config_dir())
+    if update_info and update_info.get("update_available"):
+        print_update_notice(update_info)
 
     # Resolve host: explicit flag > config > auto-detect
     if args.host is not None:
