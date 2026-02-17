@@ -15,14 +15,17 @@ from pocketpaw.bus.queue import MessageBus
 
 _log = logging.getLogger(__name__)
 
-# Maps a pip extra name → the pip package(s) it installs
+# Maps a pip extra name → the actual pip package(s) to install.
+# We install underlying packages directly instead of pocketpaw[extra] so
+# that auto-install works correctly for both source and packaged installs.
 _EXTRA_PACKAGES: dict[str, str] = {
-    "discord": "pocketpaw[discord]",
-    "slack": "pocketpaw[slack]",
-    "whatsapp-personal": "pocketpaw[whatsapp-personal]",
-    "matrix": "pocketpaw[matrix]",
-    "teams": "pocketpaw[teams]",
-    "gchat": "pocketpaw[gchat]",
+    "discord": "discord.py>=2.3.0",
+    "slack": "slack-bolt>=1.20.0",
+    "telegram": "python-telegram-bot>=21.0",
+    "whatsapp-personal": "neonize>=0.3.0",
+    "matrix": "matrix-nio>=0.24.0",
+    "teams": "botbuilder-core>=4.16.0 botbuilder-integration-aiohttp>=4.16.0",
+    "gchat": "google-api-python-client>=2.100.0 google-auth>=2.25.0",
 }
 
 
@@ -37,6 +40,8 @@ def auto_install(extra: str, verify_import: str) -> None:
         RuntimeError: If the install fails or the module still can't be imported.
     """
     pip_spec = _EXTRA_PACKAGES.get(extra, f"pocketpaw[{extra}]")
+    # Split space-separated specs into individual packages for subprocess
+    packages = pip_spec.split()
     _log.info("Auto-installing missing dependency: %s", pip_spec)
 
     # Prefer uv (fast), fall back to pip
@@ -48,12 +53,12 @@ def auto_install(extra: str, verify_import: str) -> None:
         cmd = [uv, "pip", "install"]
         if not in_venv:
             cmd.append("--system")
-        cmd.append(pip_spec)
+        cmd.extend(packages)
     else:
         cmd = ["pip", "install"]
         if not in_venv:
             cmd.append("--user")
-        cmd.append(pip_spec)
+        cmd.extend(packages)
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -67,6 +72,19 @@ def auto_install(extra: str, verify_import: str) -> None:
 
     # Clear cached import failures so Python retries the import
     importlib.invalidate_caches()
+
+    # Remove stale sys.modules entries for the target module and its parent
+    # so importlib.import_module() performs a fresh import.
+    import sys
+
+    for key in list(sys.modules):
+        if key == verify_import or key.startswith(verify_import + "."):
+            del sys.modules[key]
+    # Also clear the top-level package (e.g. "telegram" for "telegram.ext")
+    top_pkg = verify_import.split(".")[0]
+    for key in list(sys.modules):
+        if key == top_pkg or key.startswith(top_pkg + "."):
+            del sys.modules[key]
 
     # Verify the module is now importable
     try:
