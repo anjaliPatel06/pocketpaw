@@ -1,6 +1,7 @@
 """Configuration management for PocketPaw.
 
 Changes:
+  - 2026-02-17: Added health_check_on_startup field for Health Engine.
   - 2026-02-14: Add migration warning for old ~/.pocketclaw/ config dir and POCKETCLAW_ env vars.
   - 2026-02-06: Secrets stored encrypted via CredentialStore; auto-migrate plaintext keys.
   - 2026-02-06: Harden file/directory permissions (700 dir, 600 files).
@@ -309,6 +310,11 @@ class Settings(BaseSettings):
         default="0 3 * * *", description="Cron schedule for self-audit (default: 3 AM daily)"
     )
 
+    # Health Engine
+    health_check_on_startup: bool = Field(
+        default=True, description="Run health checks when PocketPaw starts"
+    )
+
     # OAuth
     google_oauth_client_id: str | None = Field(
         default=None, description="Google OAuth 2.0 client ID"
@@ -410,6 +416,12 @@ class Settings(BaseSettings):
     # Web Server
     web_host: str = Field(default="127.0.0.1", description="Web server host")
     web_port: int = Field(default=8888, description="Web server port")
+
+    # MCP OAuth
+    mcp_client_metadata_url: str = Field(
+        default="",
+        description="CIMD URL for MCP OAuth (optional, for servers without dynamic registration)",
+    )
 
     # Identity / Multi-user
     owner_id: str = Field(
@@ -553,6 +565,8 @@ class Settings(BaseSettings):
             "google_oauth_client_secret": (
                 self.google_oauth_client_secret or existing.get("google_oauth_client_secret")
             ),
+            # MCP OAuth
+            "mcp_client_metadata_url": self.mcp_client_metadata_url,
             # Voice/TTS
             "tts_provider": self.tts_provider,
             "elevenlabs_api_key": (self.elevenlabs_api_key or existing.get("elevenlabs_api_key")),

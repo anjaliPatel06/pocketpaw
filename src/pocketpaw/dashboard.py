@@ -3,6 +3,8 @@
 Lightweight FastAPI server that serves the frontend and handles WebSocket communication.
 
 Changes:
+  - 2026-02-17: Health heartbeat — periodic checks every 5 min via APScheduler, broadcasts health_update on status transitions.
+  - 2026-02-17: Health Engine API (GET /api/health, POST /api/health/check, WS get_health/run_health_check).
   - 2026-02-06: WebSocket auth via first message instead of URL query param; accept wss://.
   - 2026-02-06: Channel config REST API (GET /api/channels/status, POST save/toggle).
   - 2026-02-06: Refactored adapter storage to _channel_adapters dict; auto-start all configured.
@@ -178,6 +180,17 @@ async def broadcast_intention(intention_id: str, chunk: dict):
 async def _broadcast_audit_entry(entry: dict):
     """Broadcast a new audit log entry to all connected WebSocket clients."""
     message = {"type": "system_event", "event_type": "audit_entry", "data": entry}
+    for ws in active_connections[:]:
+        try:
+            await ws.send_json(message)
+        except Exception:
+            if ws in active_connections:
+                active_connections.remove(ws)
+
+
+async def _broadcast_health_update(summary: dict):
+    """Broadcast health status update to all connected WebSocket clients."""
+    message = {"type": "health_update", "data": summary}
     for ws in active_connections[:]:
         try:
             await ws.send_json(message)
@@ -399,14 +412,36 @@ async def startup_event():
     except Exception as e:
         logger.warning("Failed to recover interrupted projects: %s", e)
 
-    # Auto-start enabled MCP servers
+    # Wire MCP OAuth broadcast + auto-start enabled MCP servers
     try:
-        from pocketpaw.mcp.manager import get_mcp_manager
+        from pocketpaw.mcp.manager import get_mcp_manager, set_ws_broadcast
+
+        async def _mcp_ws_broadcast(message: dict) -> None:
+            """Broadcast an MCP message to all connected WebSocket clients."""
+            for ws in active_connections[:]:
+                try:
+                    await ws.send_json(message)
+                except Exception:
+                    pass
+
+        set_ws_broadcast(_mcp_ws_broadcast)
 
         mcp = get_mcp_manager()
         await mcp.start_enabled_servers()
     except Exception as e:
         logger.warning("Failed to start MCP servers: %s", e)
+
+    # Initialize health engine and run startup checks
+    try:
+        from pocketpaw.health import get_health_engine
+
+        health_engine = get_health_engine()
+        health_engine.run_startup_checks()
+        # Fire connectivity checks in background (non-blocking)
+        asyncio.create_task(health_engine.run_connectivity_checks())
+        logger.info("Health engine initialized: %s", health_engine.overall_status)
+    except Exception as e:
+        logger.warning("Failed to initialize health engine: %s", e)
 
     # Register audit log callback for live updates
     audit_logger = get_audit_logger()
@@ -419,6 +454,38 @@ async def startup_event():
     # Start proactive daemon
     daemon = get_daemon()
     daemon.start(stream_callback=broadcast_intention)
+
+    # Health heartbeat — periodic checks every 5 min, broadcast on status transitions
+    try:
+        from pocketpaw.health import get_health_engine
+
+        _health_engine = get_health_engine()
+        _prev_status = _health_engine.overall_status
+
+        async def _health_heartbeat():
+            nonlocal _prev_status
+            try:
+                _health_engine.run_startup_checks()
+                await _health_engine.run_connectivity_checks()
+                new_status = _health_engine.overall_status
+                if new_status != _prev_status:
+                    logger.info("Health status changed: %s -> %s", _prev_status, new_status)
+                    _prev_status = new_status
+                    await _broadcast_health_update(_health_engine.summary)
+            except Exception as e:
+                logger.warning("Health heartbeat error: %s", e)
+
+        # Reuse the daemon's APScheduler
+        daemon.trigger_engine.scheduler.add_job(
+            _health_heartbeat,
+            "interval",
+            minutes=5,
+            id="health_heartbeat",
+            replace_existing=True,
+        )
+        logger.info("Health heartbeat registered (every 5 min)")
+    except Exception as e:
+        logger.warning("Failed to register health heartbeat: %s", e)
 
     # Hourly rate-limiter cleanup
     async def _rate_limit_cleanup_loop():
@@ -616,6 +683,7 @@ async def list_mcp_presets():
             "url": p.url,
             "docs_url": p.docs_url,
             "needs_args": p.needs_args,
+            "oauth": p.oauth,
             "installed": p.id in installed_names,
             "env_keys": [
                 {
@@ -670,244 +738,35 @@ async def install_mcp_preset(request: Request):
     }
 
 
-# ==================== MCP Registry API ====================
+@app.get("/api/mcp/oauth/callback")
+async def mcp_oauth_callback(code: str = "", state: str = ""):
+    """OAuth callback endpoint — receives authorization code from OAuth provider.
 
-_MCP_REGISTRY_BASE = "https://registry.modelcontextprotocol.io"
-
-# Server name parts that are too generic to use alone as a config name.
-_GENERIC_SERVER_PARTS = {"mcp", "server", "mcp-server", "main", "app", "api"}
-
-
-def _derive_registry_short_name(raw_name: str, title: str | None = None) -> str:
-    """Derive a short, readable config name from a registry server name.
-
-    Examples:
-        "com.zomato/mcp"      -> "zomato-mcp"
-        "acme/weather-server"  -> "weather-server"
-        "@anthropic/claude"    -> "claude"
-        "simple-tool"          -> "simple-tool"
+    This is the redirect target after user authenticates with GitHub, Notion, etc.
+    Auth-exempt because the OAuth provider redirects the user's browser here.
     """
-    if not raw_name:
-        return ""
+    from fastapi.responses import HTMLResponse
 
-    if "/" not in raw_name:
-        return raw_name
+    from pocketpaw.mcp.manager import set_oauth_callback_result
 
-    parts = raw_name.split("/")
-    org = parts[0]
-    server_part = parts[-1]
-
-    # Clean up org: "com.zomato" -> "zomato", "@anthropic" -> "anthropic"
-    if "." in org:
-        org = org.rsplit(".", 1)[-1]
-    org = org.lstrip("@")
-
-    # If the server part is too generic, combine with org for disambiguation
-    if server_part.lower() in _GENERIC_SERVER_PARTS:
-        return f"{org}-{server_part}"
-
-    return server_part
-
-
-@app.get("/api/mcp/registry/search")
-async def search_mcp_registry(
-    q: str = "",
-    limit: int = 30,
-    cursor: str = "",
-):
-    """Proxy search to the official MCP Registry (avoids CORS)."""
-    import httpx
-
-    params: dict[str, str | int] = {"limit": min(limit, 100)}
-    if q:
-        params["search"] = q
-    if cursor:
-        params["cursor"] = cursor
-
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(
-                f"{_MCP_REGISTRY_BASE}/v0/servers",
-                params=params,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-
-            # Registry wraps each entry as {server: {...}, _meta: {...}}.
-            # Unwrap so the frontend gets flat server objects.
-            # Also: lift environmentVariables from packages[0] to server
-            # level, remove $schema ($ prefix can confuse Alpine.js proxies),
-            # and ensure expected fields have defaults.
-            servers = []
-            raw_entries = data.get("servers", [])
-            if not isinstance(raw_entries, list):
-                raw_entries = []
-
-            for entry in raw_entries:
-                if not isinstance(entry, dict):
-                    continue
-
-                raw_server = entry.get("server", entry)
-                if not isinstance(raw_server, dict):
-                    continue
-
-                srv = dict(raw_server)
-                meta = entry.get("_meta", srv.get("_meta", {}))
-                srv["_meta"] = meta if isinstance(meta, dict) else {}
-                srv.pop("$schema", None)
-
-                name = srv.get("name")
-                description = srv.get("description")
-                packages = srv.get("packages")
-                remotes = srv.get("remotes")
-                env_vars = srv.get("environmentVariables")
-
-                srv["name"] = name if isinstance(name, str) else ""
-                srv["description"] = description if isinstance(description, str) else ""
-                srv["packages"] = packages if isinstance(packages, list) else []
-                srv["remotes"] = remotes if isinstance(remotes, list) else []
-                srv["environmentVariables"] = env_vars if isinstance(env_vars, list) else []
-
-                # Lift env vars from the first package to the server level.
-                if not srv["environmentVariables"]:
-                    for pkg in srv["packages"]:
-                        if not isinstance(pkg, dict):
-                            continue
-                        pkg_env = pkg.get("environmentVariables")
-                        if isinstance(pkg_env, list) and pkg_env:
-                            srv["environmentVariables"] = pkg_env
-                            break
-
-                # Skip entries without a valid name.
-                if srv["name"]:
-                    servers.append(srv)
-
-            metadata = data.get("metadata", {})
-            if not isinstance(metadata, dict):
-                metadata = {}
-            if "nextCursor" not in metadata and "next_cursor" in metadata:
-                metadata["nextCursor"] = metadata["next_cursor"]
-            metadata.setdefault("count", len(servers))
-
-            return {"servers": servers, "metadata": metadata}
-    except Exception as exc:
-        logger.warning("MCP registry search failed: %s", exc)
-        return {"servers": [], "metadata": {"count": 0}, "error": str(exc)}
-
-
-@app.post("/api/mcp/registry/install")
-async def install_from_registry(request: Request):
-    """Install an MCP server from registry metadata.
-
-    Expects a JSON body with the server's registry data (name, packages/remotes,
-    environmentVariables) and user-supplied env values.
-    """
-    from fastapi.responses import JSONResponse
-
-    from pocketpaw.mcp.config import MCPServerConfig
-    from pocketpaw.mcp.manager import get_mcp_manager
-
-    data = await request.json()
-    server = data.get("server", {})
-    user_env = data.get("env", {})
-
-    # Derive a short, readable name from the registry name.
-    # e.g. "com.zomato/mcp" -> "zomato-mcp", "acme/weather-server" -> "weather-server"
-    raw_name = server.get("name", "")
-    short_name = _derive_registry_short_name(raw_name, server.get("title"))
-    if not short_name:
-        return JSONResponse({"error": "Missing server name"}, status_code=400)
-
-    # Try remotes first (HTTP transport — simplest, no npm needed)
-    remotes = server.get("remotes", [])
-    packages = server.get("packages", [])
-
-    config = None
-
-    if remotes:
-        remote = remotes[0]
-        # Registry API uses "type" (e.g. "streamable-http"), legacy uses "transportType"
-        transport = remote.get("type", remote.get("transportType", "http"))
-        # Normalize SSE to "http" but keep "streamable-http" distinct — they need
-        # different MCP SDK clients.
-        if transport == "sse":
-            transport = "http"
-        elif transport not in ("http", "streamable-http"):
-            transport = "http"  # safe fallback
-        config = MCPServerConfig(
-            name=short_name,
-            transport=transport,
-            url=remote.get("url", ""),
-            env=user_env,
-            enabled=True,
-        )
-    elif packages:
-        pkg = packages[0]
-        registry_type = pkg.get("registryType", "")
-        pkg_name = pkg.get("name", "") or pkg.get("identifier", "")
-        runtime = pkg.get("runtime", "node")
-
-        if registry_type == "docker":
-            args = ["run", "-i", "--rm"]
-            for ra in pkg.get("runtimeArguments", []):
-                if ra.get("isFixed"):
-                    args.append(ra.get("value", ""))
-            args.append(pkg_name)
-            config = MCPServerConfig(
-                name=short_name,
-                transport="stdio",
-                command="docker",
-                args=args,
-                env=user_env,
-                enabled=True,
-            )
-        elif registry_type == "pypi":
-            config = MCPServerConfig(
-                name=short_name,
-                transport="stdio",
-                command="uvx",
-                args=[pkg_name],
-                env=user_env,
-                enabled=True,
-            )
-        elif registry_type == "npm" or runtime == "node":
-            args = ["-y", pkg_name]
-            for pa in pkg.get("packageArguments", []):
-                if pa.get("isFixed"):
-                    args.append(pa.get("value", ""))
-            config = MCPServerConfig(
-                name=short_name,
-                transport="stdio",
-                command="npx",
-                args=args,
-                env=user_env,
-                enabled=True,
-            )
-
-    if config is None:
-        return JSONResponse(
-            {"error": "Could not determine install method from registry data"},
+    if not code or not state:
+        return HTMLResponse(
+            "<html><body><h3>Missing code or state parameter.</h3></body></html>",
             status_code=400,
         )
 
-    mgr = get_mcp_manager()
-    mgr.add_server_config(config)
-    connected = await mgr.start_server(config)
-    tools = mgr.discover_tools(config.name) if connected else []
-
-    result: dict = {
-        "status": "ok",
-        "name": config.name,
-        "connected": connected,
-        "tools": [{"name": t.name, "description": t.description} for t in tools],
-    }
-    # Surface connection error so the frontend can display it
-    if not connected:
-        status = mgr.get_server_status()
-        srv = status.get(config.name, {})
-        if srv.get("error"):
-            result["error"] = srv["error"]
-    return result
+    resolved = set_oauth_callback_result(state, code)
+    if resolved:
+        return HTMLResponse(
+            "<html><body>"
+            "<h3>Authenticated! You can close this tab.</h3>"
+            "<script>window.close()</script>"
+            "</body></html>"
+        )
+    return HTMLResponse(
+        "<html><body><h3>OAuth flow expired or not found.</h3></body></html>",
+        status_code=400,
+    )
 
 
 # ==================== Skills Library API ====================
@@ -1618,10 +1477,28 @@ def _static_version() -> str:
     return hashlib.md5("|".join(mtimes).encode()).hexdigest()[:8]
 
 
+@app.get("/api/version")
+async def get_version_info():
+    """Return current version and update availability."""
+    from importlib.metadata import version as get_version
+
+    from pocketpaw.config import get_config_dir
+    from pocketpaw.update_check import check_for_updates
+
+    current = get_version("pocketpaw")
+    info = check_for_updates(current, get_config_dir())
+    return info or {"current": current, "latest": current, "update_available": False}
+
+
 @app.get("/")
 async def index(request: Request):
     """Serve the main dashboard page."""
-    return templates.TemplateResponse("base.html", {"request": request, "v": _static_version()})
+    from importlib.metadata import version as get_version
+
+    return templates.TemplateResponse(
+        "base.html",
+        {"request": request, "v": _static_version(), "app_version": get_version("pocketpaw")},
+    )
 
 
 # ==================== Auth Middleware ====================
@@ -1704,6 +1581,7 @@ async def auth_middleware(request: Request, call_next):
         "/webhook/inbound",
         "/api/whatsapp/qr",
         "/oauth/callback",
+        "/api/mcp/oauth/callback",
     ]
 
     for path in exempt_paths:
@@ -2528,6 +2406,44 @@ async def websocket_endpoint(
                 path = data.get("path", "")
                 await handle_file_navigation(websocket, path, settings)
 
+            # Health engine actions
+            elif action == "get_health":
+                try:
+                    from pocketpaw.health import get_health_engine
+
+                    engine = get_health_engine()
+                    await websocket.send_json({"type": "health_update", "data": engine.summary})
+                except Exception as e:
+                    await websocket.send_json(
+                        {"type": "health_update", "data": {"status": "unknown", "error": str(e)}}
+                    )
+
+            elif action == "run_health_check":
+                try:
+                    from pocketpaw.health import get_health_engine
+
+                    engine = get_health_engine()
+                    await engine.run_all_checks()
+                    await websocket.send_json({"type": "health_update", "data": engine.summary})
+                except Exception as e:
+                    await websocket.send_json(
+                        {"type": "health_update", "data": {"status": "unknown", "error": str(e)}}
+                    )
+
+            elif action == "get_health_errors":
+                try:
+                    from pocketpaw.health import get_health_engine
+
+                    engine = get_health_engine()
+                    limit = data.get("limit", 20)
+                    search = data.get("search", "")
+                    errors = engine.get_recent_errors(limit=limit, search=search)
+                    await websocket.send_json({"type": "health_errors", "errors": errors})
+                except Exception as e:
+                    await websocket.send_json(
+                        {"type": "health_errors", "errors": [], "error": str(e)}
+                    )
+
             # Handle file browser
             elif action == "browse":
                 path = data.get("path", "~")
@@ -3140,6 +3056,62 @@ async def run_self_audit_endpoint():
     return report
 
 
+# ==================== Health Engine API ====================
+
+
+@app.get("/api/health")
+async def get_health_status():
+    """Get current health engine summary."""
+    try:
+        from pocketpaw.health import get_health_engine
+
+        engine = get_health_engine()
+        return engine.summary
+    except Exception as e:
+        return {"status": "unknown", "check_count": 0, "issues": [], "error": str(e)}
+
+
+@app.get("/api/health/errors")
+async def get_health_errors(limit: int = 20, search: str = ""):
+    """Get recent errors from the persistent error log."""
+    try:
+        from pocketpaw.health import get_health_engine
+
+        engine = get_health_engine()
+        return engine.get_recent_errors(limit=limit, search=search)
+    except Exception:
+        return []
+
+
+@app.delete("/api/health/errors")
+async def clear_health_errors():
+    """Clear the persistent error log."""
+    try:
+        from pocketpaw.health import get_health_engine
+
+        engine = get_health_engine()
+        engine.error_store.clear()
+        return {"cleared": True}
+    except Exception as e:
+        return {"cleared": False, "error": str(e)}
+
+
+@app.post("/api/health/check")
+async def trigger_health_check():
+    """Run all health checks (startup + connectivity) and return results."""
+    try:
+        from pocketpaw.health import get_health_engine
+
+        engine = get_health_engine()
+        await engine.run_all_checks()
+        summary = engine.summary
+        # Broadcast to all connected clients
+        await _broadcast_health_update(summary)
+        return summary
+    except Exception as e:
+        return {"status": "unknown", "error": str(e)}
+
+
 async def handle_tool(websocket: WebSocket, tool: str, settings: Settings, data: dict):
     """Handle tool execution."""
 
@@ -3352,13 +3324,20 @@ async def get_memory_stats():
     }
 
 
-def run_dashboard(host: str = "127.0.0.1", port: int = 8888, open_browser: bool = True):
+def run_dashboard(
+    host: str = "127.0.0.1",
+    port: int = 8888,
+    open_browser: bool = True,
+    dev: bool = False,
+):
     """Run the dashboard server."""
     global _open_browser_url
 
     print("\n" + "=" * 50)
     print("🐾 POCKETPAW WEB DASHBOARD")
     print("=" * 50)
+    if dev:
+        print("🔄 Development mode — auto-reload enabled")
     if host == "0.0.0.0":
         import socket
 
@@ -3377,7 +3356,21 @@ def run_dashboard(host: str = "127.0.0.1", port: int = 8888, open_browser: bool 
     if open_browser:
         _open_browser_url = f"http://localhost:{port}"
 
-    uvicorn.run(app, host=host, port=port)
+    if dev:
+        import pathlib
+
+        src_dir = str(pathlib.Path(__file__).resolve().parent)
+        uvicorn.run(
+            "pocketpaw.dashboard:app",
+            host=host,
+            port=port,
+            reload=True,
+            reload_dirs=[src_dir],
+            reload_includes=["*.py", "*.html", "*.js", "*.css"],
+            log_level="debug",
+        )
+    else:
+        uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == "__main__":

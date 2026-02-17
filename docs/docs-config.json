@@ -535,7 +535,8 @@
               { "label": "Toggle MCP Server", "href": "/api/post-mcp-toggle", "method": "POST" },
               { "label": "Test MCP Server", "href": "/api/post-mcp-test", "method": "POST" },
               { "label": "List MCP Presets", "href": "/api/get-mcp-presets", "method": "GET" },
-              { "label": "Install MCP Preset", "href": "/api/post-mcp-preset-install", "method": "POST" }
+              { "label": "Install MCP Preset", "href": "/api/post-mcp-preset-install", "method": "POST" },
+              { "label": "MCP OAuth Callback", "href": "/api/get-mcp-oauth-callback", "method": "GET" }
             ]
           },
           {
