@@ -52,6 +52,31 @@ I'm your self-hosted, cross-platform personal AI agent. The web dashboard opens 
 
 **No subscription. No cloud lock-in. Just you and me.**
 
+
+## Windows Installation Guide (Beginner Friendly)
+
+Follow these steps to install PocketPaw on Windows:
+
+1. Install Python 3.10 or higher from https://www.python.org/downloads/
+2. During installation, check "Add Python to PATH"
+3. Open Command Prompt or PowerShell
+4. Run the following command:
+
+   pip install pocketpaw
+
+5. After installation, start PocketPaw:
+
+   pocketpaw
+
+6. The dashboard will open at:
+   http://localhost:8888
+
+
+More install options
+PocketPaw will open the web dashboard...
+
+
+
 <details>
 <summary>More install options</summary>
 
